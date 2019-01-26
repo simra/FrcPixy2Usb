@@ -8,14 +8,15 @@ import org.usb4java.DeviceDescriptor;
 import org.usb4java.DeviceList;
 import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
-import  java.time.Instant;
+import java.time.Duration;
+import java.time.Instant;
 
 
 class USBLink  extends Link
 {
     Context m_context;
     DeviceHandle m_handle;
-    int m_timer;
+    Instant m_timer;
 
     public USBLink() {
         m_handle = null;
@@ -66,31 +67,29 @@ class USBLink  extends Link
 
     public int receive(byte[] data, short timeoutMs) {
         
-            if (timeoutMs==0) // 0 equals infinity
-                timeoutMs = 100;
-        
-            // Note: if this call is taking more time than than expected, check to see if we're connected as USB 2.0.  Bad USB cables can
-            // cause us to revert to a 1.0 connection.
-            ByteBuffer buffer = ByteBuffer.allocateDirect(data.length);
-            IntBuffer transferred = IntBuffer.allocate(1);
-            int result=LibUsb.bulkTransfer(m_handle, (byte)0x82, buffer, transferred, timeoutMs);
-            if (result != LibUsb.SUCCESS) throw new LibUsbException("Control transfer failed", transferred.get());
-            int received = transferred.get();
-            buffer.get(data,0, received);
-            return received;
-        }
-        
-    }
+        if (timeoutMs==0) // 0 equals infinity
+            timeoutMs = 100;
     
+        // Note: if this call is taking more time than than expected, check to see if we're connected as USB 2.0.  Bad USB cables can
+        // cause us to revert to a 1.0 connection.
+        ByteBuffer buffer = ByteBuffer.allocateDirect(data.length);
+        IntBuffer transferred = IntBuffer.allocate(1);
+        int result=LibUsb.bulkTransfer(m_handle, (byte)0x82, buffer, transferred, timeoutMs);
+        if (result != LibUsb.SUCCESS) throw new LibUsbException("Control transfer failed", transferred.get());
+        int received = transferred.get();
+        buffer.get(data,0, received);
+        return received;
+    }
+     
     public void setTimer() 
     {
-          m_timer = java.time.Instant();
+          m_timer = Instant.now();
     }
 
     public int getTimer()
     {
-        int time = java.time.Instant() - m_timer;
-        return time;
+        long time = Duration.between(m_timer,Instant.now()).toMillis();
+        return (int)time;
     }
 
     private int openDevice() {
